@@ -1,0 +1,32 @@
+#download NEON data using API
+
+inv_allTabs <- loadByProduct(dpID = "DP1.20120.001", 
+                             site = c("MAYF", "PRIN", "BLUE", "LECO", "CARI", "ARIK", "COMO", "WLOU", "BLDE", "REDB", "HOPB", "OKSR", "WALK", "MCRA", "SYCA", "GUIL", "POSE", "KING", "MART", "CUPE", "BIGC", "MCDI", "LEWI"),
+                             startdate = "2014-1", enddate = "2018-12",  package = "expanded", check.size = FALSE)
+
+########or site = "all" if all aqutic sites are wanted#################### 
+names(inv_allTabs)
+
+
+
+field_dat <- dplyr::select(inv_allTabs$inv_fieldData, sampleID, benthicArea, habitatType)
+
+
+#combine field and count tables
+inv_dat <- left_join(inv_allTabs$inv_taxonomyProcessed, field_dat, by = "sampleID") %>% 
+  mutate(den = estimatedTotalCount/benthicArea) %>% 
+  mutate(scientificName = forcats::fct_explicit_na(scientificName)) %>%
+  filter(sampleCondition == "condition OK") 
+spp_list <- data.frame(unique(inv_dat$scientificName))
+
+# Think about making all species that are ided in scientificName to their genus.
+
+inv_dat_sum <- inv_dat %>%
+  group_by(siteID, collectDate, sampleID, scientificName) %>% 
+  summarize(den_sum = sum(den)) %>%
+  mutate(year = year(collectDate))
+
+
+
+write.csv(inv_dat_sum, "macros_clean_neon.csv")
+  
